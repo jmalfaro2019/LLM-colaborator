@@ -2,125 +2,129 @@
 
 from simulated_student import SimulatedStudent
 
-# 1. El Escenario que todos los agentes conocerán
+# 1. The Scenario that all agents will know
 PBL_SCENARIO = """
-Situación actual: El equipo de estudiantes debe resolver un problema de Machine Learning.
-Problema: Una clínica tiene miles de historiales médicos de pacientes sin ninguna etiqueta o diagnóstico previo clasificado. Quieren encontrar patrones ocultos en los síntomas para ver si existen nuevas variantes de una enfermedad. 
-Objetivo del equipo: Discutir y decidir si deben aplicar un enfoque de Aprendizaje Supervisado o No Supervisado, y proponer al menos un algoritmo (ej. K-Means, Random Forest, etc.).
+Current situation: The team of students must solve a Machine Learning problem.
+Problem: A clinic has thousands of patient medical records without any labels or prior classified diagnoses. They want to find hidden patterns in symptoms to see if new variants of a disease exist. 
+Team objective: Discuss and decide whether to apply a Supervised or Unsupervised Learning approach, and propose at least one algorithm (e.g., K-Means, Random Forest, etc.).
 """
 
-# 2. Prompts de Personalidad (Optimizados para Llama 3 / Mistral)
-PROMPT_DOMINANTE = f"""Eres Carlos, un estudiante de ingeniería de software en un chat grupal.
+# 2. Personality Prompts (Optimized for Llama 3 / Mistral)
+PROMPT_DOMINANT = f"""You are Carlos, a software engineering student in a group chat.
 
 {PBL_SCENARIO}
 
-Tu personalidad:
-- Eres dominante, impaciente y muy seguro de tus conocimientos técnicos.
-- Quieres imponer tu solución (ej. enfoque no supervisado).
+Your personality:
+- You are dominant, impatient, and very confident in your technical knowledge.
+- You want to impose your solution (e.g., unsupervised approach).
 
-REGLAS ESTRICTAS DE SALIDA:
-1. Analiza los últimos mensajes. Si tu personalidad dicta que no intervendrías en este momento, responde ÚNICAMENTE con la palabra: [SILENCIO].
-2. Si decides hablar, NO uses preámbulos, empieza directamente tu respuesta en 1 o 2 oraciones.
+STRICT OUTPUT RULES:
+1. Analyze the latest messages. If your personality dictates that you would not intervene at this moment, respond ONLY with the word: [SILENCE].
+2. If you decide to speak, DO NOT use preambles; start your response directly in 1 or 2 sentences.
 
-EJEMPLO DE RESPUESTA DE ABSTINENCIA:
-[SILENCIO]
+EXAMPLE OF ABSTENTION RESPONSE:
+[SILENCE]
 """
-PROMPT_PASIVO = f"""Eres Ana, una estudiante de ingeniería de software en un chat grupal.
+
+PROMPT_PASSIVE = f"""You are Ana, a software engineering student in a group chat.
 {PBL_SCENARIO}
 
-Tu personalidad:
-- Eres insegura de tus conocimientos técnicos.
-- Sueles estar de acuerdo con el estudiante dominante para evitar conflictos.
-- Tienes alta probabilidad de no participar a menos que te pregunten directamente o haya un silencio largo.
+Your personality:
+- You are unsure about your technical knowledge.
+- You tend to agree with the dominant student to avoid conflict.
+- You have a high probability of not participating unless directly asked or there is a long silence.
 
-REGLAS ESTRICTAS DE SALIDA:
-1. Analiza los últimos mensajes. Si tu personalidad dicta que no intervendrías en este momento, responde ÚNICAMENTE con la palabra: [SILENCIO].
-2. Si decides hablar, NO uses preámbulos, empieza directamente tu respuesta en 1 o 2 oraciones.
+STRICT OUTPUT RULES:
+1. Analyze the latest messages. If your personality dictates that you would not intervene at this moment, respond ONLY with the word: [SILENCE].
+2. If you decide to speak, DO NOT use preambles; start your response directly in 1 or 2 sentences.
 
-EJEMPLO DE RESPUESTA DE ABSTINENCIA:
-[SILENCIO]
+EXAMPLE OF ABSTENTION RESPONSE:
+[SILENCE]
 """
 
-PROMPT_REFLEXIVO = f"""Eres Luis, un estudiante de ingeniería de software en un chat grupal.
+PROMPT_REFLECTIVE = f"""You are Luis, a software engineering student in a group chat.
 {PBL_SCENARIO}
-Tu personalidad:
-- Eres analítico, mediador y fomentas la 'transactividad'.
-- SIEMPRE construyes sobre las ideas de los demás (menciona a Carlos o Ana).
-- Te enfocas en entender el "por qué" y evalúas pros y contras.
 
-REGLAS ESTRICTAS DE SALIDA:
-1. Analiza los últimos mensajes. Si tu personalidad dicta que no intervendrías en este momento, responde ÚNICAMENTE con la palabra: [SILENCIO].
-2. Si decides hablar, NO uses preámbulos, empieza directamente tu respuesta en 1 o 2 oraciones.
+Your personality:
+- You are analytical, a mediator, and you promote "transactivity".
+- You ALWAYS build on others' ideas (mention Carlos or Ana).
+- You focus on understanding the "why" and evaluate pros and cons.
 
-EJEMPLO DE RESPUESTA DE ABSTINENCIA:
-[SILENCIO]
+STRICT OUTPUT RULES:
+1. Analyze the latest messages. If your personality dictates that you would not intervene at this moment, respond ONLY with the word: [SILENCE].
+2. If you decide to speak, DO NOT use preambles; start your response directly in 1 or 2 sentences.
+
+EXAMPLE OF ABSTENTION RESPONSE:
+[SILENCE]
 """
 
 
-def simulador_pbl_con_sistema_b(agentes, max_ticks=6):
-    historial_chat = []
-    # Diccionario para rastrear la inactividad de cada estudiante
-    inactividad = {agente.name: 0 for agente in agentes}
+def pbl_simulator_with_system_b(agents, max_ticks=6):
+    chat_history = []
+    # Dictionary to track inactivity of each student
+    inactivity = {agent.name: 0 for agent in agents}
     
-    mensaje_tutor = "Hola equipo. Tenemos los historiales médicos sin etiquetas. ¿Deberíamos usar aprendizaje supervisado o no supervisado?"
-    historial_chat.append(f"Tutor: {mensaje_tutor}")
-    print(f"[Tick 0] Tutor: {mensaje_tutor}")
+    tutor_message = "Hello team. We have unlabeled medical records. Should we use supervised or unsupervised learning?"
+    chat_history.append(f"Tutor: {tutor_message}")
+    print(f"[Tick 0] Tutor: {tutor_message}")
 
-    for agente in agentes:
-        agente.receive_message("Tutor", mensaje_tutor)
+    for agent in agents:
+        agent.receive_message("Tutor", tutor_message)
 
     for tick in range(1, max_ticks + 1):
-        print(f"\n--- Minuto {tick} ---")
+        print(f"\n--- Minute {tick} ---")
 
-        for agente in agentes:
-            respuesta = agente.generate_response().strip()
+        for agent in agents:
+            response = agent.generate_response().strip()
             
-            if respuesta == "[SILENCIO]" or "[SILENCIO]" in respuesta:
-                print(f"{agente.name} decidió no hablar.")
-                agente.history.pop() 
-                inactividad[agente.name] += 1 # Aumenta contador de inactividad
+            if response == "[SILENCE]" or "[SILENCE]" in response:
+                print(f"{agent.name} decided not to speak.")
+                agent.history.pop()
+                inactivity[agent.name] += 1  # Increase inactivity counter
             else:
-                print(f"{agente.name} dice: {respuesta}")
-                historial_chat.append(f"{agente.name}: {respuesta}")
-                inactividad[agente.name] = 0 # Reinicia contador al hablar
+                print(f"{agent.name} says: {response}")
+                chat_history.append(f"{agent.name}: {response}")
+                inactivity[agent.name] = 0  # Reset counter when speaking
                 
-                for otro_agente in agentes:
-                    if otro_agente.name != agente.name:
-                        otro_agente.receive_message(agente.name, respuesta)
+                for other_agent in agents:
+                    if other_agent.name != agent.name:
+                        other_agent.receive_message(agent.name, response)
 
-        # Evaluación del Sistema B al finalizar el minuto (tick)
-        for nombre_agente, minutos_inactivo in inactividad.items():
-            if minutos_inactivo >= 3:
-                intervencion = f"{nombre_agente}, noto que no has participado en los últimos minutos. ¿Tienes alguna perspectiva sobre lo que se está discutiendo?"
-                print(f"\n[SISTEMA B INTERVIENE] Tutor: {intervencion}")
-                historial_chat.append(f"Tutor: {intervencion}")
+        # System B evaluation at the end of the minute (tick)
+        for agent_name, inactive_minutes in inactivity.items():
+            if inactive_minutes >= 3:
+                intervention = f"{agent_name}, I notice you haven't participated in the last few minutes. Do you have any perspective on what is being discussed?"
+                print(f"\n[SYSTEM B INTERVENES] Tutor: {intervention}")
+                chat_history.append(f"Tutor: {intervention}")
                 
-                # 1. Propagamos la intervención a TODOS los agentes (para contexto)
-                for agente in agentes:
-                    agente.receive_message("Tutor", intervencion)
+                # 1. Propagate intervention to ALL agents (for context)
+                for agent in agents:
+                    agent.receive_message("Tutor", intervention)
                 
-                # 2. Forzamos la respuesta INMEDIATA solo del agente interpelado
-                agente_objetivo = next(a for a in agentes if a.name == nombre_agente)
-                respuesta_forzada = agente_objetivo.generate_response().strip()
+                # 2. Force IMMEDIATE response only from the addressed agent
+                target_agent = next(a for a in agents if a.name == agent_name)
+                forced_response = target_agent.generate_response().strip()
                 
-                if respuesta_forzada == "[SILENCIO]" or "[SILENCIO]" in respuesta_forzada:
-                    print(f">> {nombre_agente} se mantuvo en silencio pese a la intervención.")
-                    agente_objetivo.history.pop() # Purgar el silencio
+                if forced_response == "[SILENCE]" or "[SILENCE]" in forced_response:
+                    print(f">> {agent_name} remained silent despite the intervention.")
+                    target_agent.history.pop()  # Purge silence
                 else:
-                    print(f"{nombre_agente} dice: {respuesta_forzada}")
-                    historial_chat.append(f"{nombre_agente}: {respuesta_forzada}")
+                    print(f"{agent_name} says: {forced_response}")
+                    chat_history.append(f"{agent_name}: {forced_response}")
                     
-                    # 3. Propagamos su respuesta a los demás agentes
-                    for otro_agente in agentes:
-                        if otro_agente.name != nombre_agente:
-                            otro_agente.receive_message(nombre_agente, respuesta_forzada)
+                    # 3. Propagate response to other agents
+                    for other_agent in agents:
+                        if other_agent.name != agent_name:
+                            other_agent.receive_message(agent_name, forced_response)
                 
-                # Reiniciamos el contador del agente para evitar bucles infinitos de intervención
-                inactividad[nombre_agente] = 0
-                break # Solo 1 intervención del tutor por minuto
-# --- EJECUCIÓN ---
-carlos = SimulatedStudent("Carlos", PROMPT_DOMINANTE)
-ana = SimulatedStudent("Ana", PROMPT_PASIVO)
-luis = SimulatedStudent("Luis", PROMPT_REFLEXIVO)
-#simulador_pbl_con_tiempo([carlos, ana, luis], max_ticks=5)
-simulador_pbl_con_sistema_b([carlos, ana, luis], max_ticks=6)
+                # Reset counter to avoid infinite intervention loops
+                inactivity[agent_name] = 0
+                break  # Only 1 tutor intervention per minute
+
+
+# --- EXECUTION ---
+carlos = SimulatedStudent("Carlos", PROMPT_DOMINANT)
+ana = SimulatedStudent("Ana", PROMPT_PASSIVE)
+luis = SimulatedStudent("Luis", PROMPT_REFLECTIVE)
+
+pbl_simulator_with_system_b([carlos, ana, luis], max_ticks=6)

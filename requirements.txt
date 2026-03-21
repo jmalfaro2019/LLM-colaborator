@@ -1,0 +1,5 @@
+# Core libraries
+openai>=1.0.0
+
+# Environment management
+python-dotenv>=1.0.0
