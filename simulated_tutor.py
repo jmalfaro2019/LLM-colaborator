@@ -3,16 +3,16 @@ from openai import OpenAI
 from dotenv import load_dotenv
 
 
-class SimulatedStudent:
-    """Simulates a student with a specific persona in a group chat."""
+class SimulatedTutor:
+    """Simulates a tutor that facilitates PBL discussions."""
     
     def __init__(self, name, system_prompt, model_name="llama-3.1-8b-instant"):
         """
-        Initialize a simulated student.
+        Initialize a simulated tutor.
         
         Args:
-            name: Student's name
-            system_prompt: System prompt defining the student's personality and knowledge
+            name: Tutor's name
+            system_prompt: System prompt defining the tutor's role and approach
             model_name: LLM model to use (default: Groq's llama-3.1-8b-instant)
         """
         load_dotenv()  # Load variables from .env
@@ -30,7 +30,7 @@ class SimulatedStudent:
     
     def receive_message(self, sender, message):
         """
-        Add a message from another participant to the chat history.
+        Add a message from a participant to the chat history.
         
         Args:
             sender: Name of the person sending the message
@@ -40,10 +40,10 @@ class SimulatedStudent:
     
     def generate_response(self):
         """
-        Generate a response to the current conversation context.
+        Generate a tutor response to the current conversation context.
         
         Returns:
-            The student's response as a string
+            The tutor's response as a string
         """
         response = self.client.chat.completions.create(
             model=self.model,
