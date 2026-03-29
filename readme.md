@@ -149,11 +149,6 @@ system_type = "B"  # Use "A" for transactivity-based (experimental)
 - **Tutor Quality**: System B interventions are contextually appropriate and encourage deeper thinking
 - **Information Sharing**: Students genuinely listen and build on what others say
 
-### Known Limitations
-- ⚠️ **System A (Transactivity)** has not been tested in full simulation runs
-- ⚠️ Some edge cases may cause unexpected [SILENCE] patterns (depends on LLM output quality)
-- ⚠️ Tutor System A may require fine-tuning prompts for better responsiveness
-
 ### Research Challenge: Rapid Consensus Problem
 
 **Current Issue**: Students reach consensus too quickly in most simulations.
@@ -166,8 +161,6 @@ The three students, while maintaining distinct identities, often **converge to s
 
 **Why This Matters for Tutor Evaluation**:
 - With rapid consensus, the tutor never faces **prolonged disagreement** scenarios
-- System B (Activity-based) tutor is designed for **silence/inactivity**, not for **unproductive debate**
-- System A (Transactivity) tutor would benefit from scenarios where students stubbornly repeat ideas without synthesis
 - We cannot properly evaluate how well tutors handle **conflict resolution, contradictory evidence, or strong resistance to new ideas**
 
 
