@@ -1,0 +1,63 @@
+{
+    "scenarios": [
+        "KNN",
+        "KMEANS",
+        "TREES"
+    ],
+    "systems": [
+        "A",
+        "B"
+    ],
+    "runs_per_combination": 5,
+    "completed_runs": [
+        [
+            "KNN",
+            "A",
+            1
+        ],
+        [
+            "KNN",
+            "A",
+            2
+        ],
+        [
+            "KNN",
+            "A",
+            3
+        ],
+        [
+            "KNN",
+            "A",
+            4
+        ],
+        [
+            "KNN",
+            "A",
+            5
+        ],
+        [
+            "KNN",
+            "B",
+            1
+        ],
+        [
+            "KNN",
+            "B",
+            2
+        ],
+        [
+            "KNN",
+            "B",
+            3
+        ],
+        [
+            "KNN",
+            "B",
+            4
+        ]
+    ],
+    "current_run": 10,
+    "total_runs": 30,
+    "last_error": "User interrupted",
+    "timestamp": "2026-04-07T11:15:37.505948"
+}

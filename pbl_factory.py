@@ -8,12 +8,18 @@ class PBLFactory:
     """Generates random dynamic configurations for PBL Simulations."""
     
     def __init__(self):
-        self.student_names = ["Carlos", "Ana", "Luis"]
+        self.base_student_names = ["Carlos", "Ana", "Luis"]
+        self.student_names = None  # Será aleatorizado en generate_random_session
 
     def generate_random_session(self, system_type="B", force_scenario=None):
         """
         Returns the prompts needed to instantiate the students and tutor.
         """
+        # 0. RANDOMIZE STUDENT ORDER (M2: Eliminar sesgo de participación)
+        self.student_names = self.base_student_names.copy()
+        random.shuffle(self.student_names)
+        print(f">> Student order: {' -> '.join(self.student_names)}")
+        
         # 1. Pick a scenario (KNN, KMEANS, or TREES)
         scenario_key = force_scenario if force_scenario else random.choice(list(SCENARIOS_DB.keys()))
         scenario_data = SCENARIOS_DB[scenario_key]

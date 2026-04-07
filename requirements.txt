@@ -1,5 +1,9 @@
 # Core libraries
-openai>=1.0.0
+openai>=1.0.0,<2.0.0  # Includes Groq API compatibility via OpenAI base_url
 
 # Environment management
-python-dotenv>=1.0.0
+python-dotenv>=1.0.0,<2.0.0
+
+# Note: Groq API uses OpenAI-compatible endpoint
+# No separate 'groq' package needed - use base_url="https://api.groq.com/openai/v1"
+

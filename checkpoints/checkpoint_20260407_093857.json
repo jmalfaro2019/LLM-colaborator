@@ -1,0 +1,17 @@
+{
+    "scenarios": [
+        "KNN",
+        "KMEANS",
+        "TREES"
+    ],
+    "systems": [
+        "A",
+        "B"
+    ],
+    "runs_per_combination": 5,
+    "completed_runs": [],
+    "current_run": 1,
+    "total_runs": 30,
+    "last_error": "User interrupted",
+    "timestamp": "2026-04-07T09:38:57.955841"
+}

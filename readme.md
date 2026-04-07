@@ -234,3 +234,174 @@ You’ll see how the students debate, change their minds, and apply what others 
 - **Change how the tutor intervenes**: Edit `pbl_simulator.py` → intervention methods
 
 ---
+
+## ✨ Recent Improvements (April 6, 2026)
+
+Three critical improvements have been implemented to enhance reproducibility, fairness, and efficiency:
+
+### M1: Reproducibility with Random Seeds
+
+**Purpose**: Enable exact reproducibility of simulations for debugging and research verification
+
+**Usage**:
+```python
+from pbl_session import setup_pbl_session
+
+# Reproducible: Same seed = identical results
+students, tutor, problem, config, scenario = setup_pbl_session(
+    system_type="B", scenario="KNN", seed=42
+)
+
+# Random: No seed = different result each time
+students, tutor, problem, config, scenario = setup_pbl_session(
+    system_type="B", scenario="KNN"
+)
+```
+
+Also works with batch experiments via `run_experiments.py`
+
+**Benefit**: Ensures reproducible debugging, research comparisons, and deterministic testing
+
+---
+
+### M2: Randomized Student Participation Order
+
+**Purpose**: Eliminate systematic bias where students always speak in the same order
+
+**Before M2**:
+```
+Every simulation: Carlos → Ana → Luis  ❌
+(Carlos has participation advantage as first speaker)
+```
+
+**After M2**:
+```
+Simulation 1: Carlos → Ana → Luis
+Simulation 2: Ana → Luis → Carlos
+Simulation 3: Luis → Carlos → Ana    ✅
+(Each student has equal opportunity to participate)
+```
+
+**Implementation**: Automatically randomizes student order in each session
+
+**Benefit**: Fairer research results, eliminates systematic participation bias, more realistic group dynamics
+
+---
+
+### M4: History Sliding Window (Token Management)
+
+**Purpose**: Prevent token creep and allow longer simulations without degradation
+
+**How it works**:
+- Maintains a **sliding window of 50 recent messages** (plus 1 system prompt)
+- As the simulation progresses, older messages are automatically pruned
+- Preserves LLM context quality without exponential token growth
+
+**Token savings**: ~50% of tokens by final rounds compared to unbounded history
+
+**Benefit**: Faster LLM calls in later rounds, enables longer simulations, controlled token usage
+
+---
+
+## 🧪 Testing
+
+Run the unit tests to verify all features:
+
+```bash
+# Test M1, M2, M4 implementations
+python -m unittest tests.test_top3 -v
+
+# Expected output: OK (all 8 tests pass)
+```
+
+---
+
+## 📦 Batch Experiments with Checkpoint/Resume
+
+Run multiple simulations across all scenarios and tutor systems. If API quota is exhausted, the system automatically saves progress and allows resuming later.
+
+### Run Full Batch
+
+```bash
+python run_experiments.py
+```
+
+This runs all 6 simulations (3 scenarios × 2 systems):
+- KNN with System A
+- KNN with System B  
+- KMEANS with System A
+- KMEANS with System B
+- TREES with System A
+- TREES with System B
+
+Results are saved to `results/sim_*.json`
+
+### If API Quota Runs Out
+
+When the Groq API rate limit (Error 429) is reached:
+1. System **automatically saves a checkpoint** to `checkpoints/checkpoint_latest.json`
+2. Execution **stops cleanly** (no partial data)
+3. You can **resume later** without losing progress
+
+### Resume from Checkpoint
+
+After quota resets (24 hours), resume with:
+
+```bash
+python -c "from run_experiments import resume_batch_experiments; resume_batch_experiments()"
+```
+
+This will:
+- Load the last checkpoint
+- Continue **exactly where it stopped**
+- Complete remaining simulations
+- Use the **same parameters** as the original run
+
+### Custom Batch Runs
+
+Run specific scenarios and systems:
+
+```bash
+# Only KNN with System B
+python -c "from run_experiments import run_batch_experiments; run_batch_experiments(scenarios=['KNN'], systems=['B'])"
+
+# All scenarios with just System A
+python -c "from run_experiments import run_batch_experiments; run_batch_experiments(systems=['A'])"
+
+# Single scenario, single system, 5 runs each
+python -c "from run_experiments import run_batch_experiments; run_batch_experiments(scenarios=['KMEANS'], systems=['B'], runs_per_combination=5)"
+```
+
+### Checkpoint Details
+
+Checkpoints are saved to `checkpoints/`:
+- **checkpoint_latest.json** - Always the latest checkpoint (overwritten on new failure)
+- **checkpoint_YYYYMMDD_HHMMSS.json** - Timestamped backups (kept for safety)
+
+Each checkpoint contains:
+- Which simulations were completed
+- Progress (current_run / total_runs)
+- Original parameters (scenarios, systems, run count)
+- Error details (what caused the stop)
+
+### Example Workflow
+
+```
+Day 1:
+$ python run_experiments.py
+  ✅ KNN-A-1 complete
+  ✅ KNN-B-1 complete
+  ✅ KMEANS-A-1 complete
+  ❌ ERROR 429: Rate limit
+  → Checkpoint saved automatically
+
+Day 2 (after quota reset):
+$ python -c "from run_experiments import resume_batch_experiments; resume_batch_experiments()"
+  ✅ Loading checkpoint...
+  ✅ KMEANS-B-1 complete
+  ✅ TREES-A-1 complete
+  ✅ TREES-B-1 complete
+  ✅ All simulations complete!
+```
+
+---
