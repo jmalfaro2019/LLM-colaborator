@@ -64,7 +64,19 @@ def save_simulation_log(scenario, system, run_id, history, students_config, fold
     
     with open(filename, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=4, ensure_ascii=False)
-    print(f"[OK] Saved: {filename}")
+    print(f"[OK] Saved JSON: {filename}")
+
+
+def save_simulation_transcript(scenario, system, run_id, transcript, folder="results"):
+    """Saves the full console transcript to a TXT file for qualitative analysis."""
+    if not os.path.exists(folder):
+        os.makedirs(folder)
+        
+    filename = f"{folder}/sim_{scenario}_Sys{system}_run{run_id}.txt"
+    
+    with open(filename, "w", encoding="utf-8") as f:
+        f.write("\n".join(transcript))
+    print(f"[OK] Saved TXT:  {filename}")
 
 
 def save_checkpoint(resume_state, checkpoint_dir="checkpoints"):
@@ -152,6 +164,10 @@ def _run_simulation(scenario, system, run_id, llm_client, max_ticks=MAX_TICKS, s
     )
     simulator.run()
     
+    # After simulation, save both JSON and TXT
+    save_simulation_log(scenario, system, run_id, simulator.chat_history, students_config)
+    save_simulation_transcript(scenario, system, run_id, simulator.transcript)
+    
     return simulator, students_config, scenario_key
 
 
@@ -168,7 +184,7 @@ def run_quick_test(scenario="KMEANS", system="B", max_ticks=3):
         llm_client=llm_client, max_ticks=max_ticks
     )
     
-    save_simulation_log(scenario, system, 1, simulator.chat_history, students_config)
+    # _run_simulation now handles saving both files
     
     print(f"\n[OK] Quick test ({scenario} - System {system}) completed successfully!")
     print(f"[INFO] Check results/sim_{scenario}_Sys{system}_run1.json to verify formatting\n")
@@ -185,63 +201,55 @@ def run_quick_test_system_b(scenario="KMEANS", max_ticks=3):
 
 
 
-def run_batch_experiments(scenarios=None, systems=None, runs_per_combination=1):
+def run_batch_experiments(scenarios=None, systems=None, runs_per_combination=1, completed_runs=None):
     """
     Run batch of PBL simulations with automatic checkpoint on rate limit.
-    
-    Si se agota el quota de tokens (Error 429):
-    - Guarda checkpoint automáticamente
-    - Puedes continuar después con resume_batch_experiments()
-    
-    Args:
-        scenarios: List of scenarios ["KNN", "KMEANS", "TREES"] or None for all
-        systems: List of systems ["A", "B"] or None for all
-        runs_per_combination: How many runs per scenario-system combo
-        
-    Example:
-        >>> run_batch_experiments()  # Todos los scenarios, sistemas, 1 run = 6 total
-        >>> run_batch_experiments(scenarios=["KNN"], systems=["B"])  # Solo KNN con B
-        
-    Si se agota quota:
-        >>> resume_batch_experiments()  # Continúa desde donde dejó
     """
     if scenarios is None:
         scenarios = ["KNN", "KMEANS", "TREES"]
     if systems is None:
         systems = ["A", "B"]
     
-    llm_client = get_groq_client()
+    if completed_runs is None:
+        completed_runs = []
+    
+    # Convert list of tuples to a set for faster lookup
+    completed_set = set(tuple(run) for run in completed_runs)
+    
+    llm_client = get_groq_client() # Still need it for compatibility, though manager is used internally
     
     total_runs = len(scenarios) * len(systems) * runs_per_combination
-    current_run = 0
-    completed_runs = []
+    current_run_count = len(completed_runs)
 
     try:
         for scenario in scenarios:
             for system in systems:
                 for run_id in range(1, runs_per_combination + 1):
-                    current_run += 1
+                    # Check if already completed
+                    if (scenario, system, run_id) in completed_set:
+                        continue
+                    
+                    current_run_count += 1
                     print(f"\n{'='*50}")
-                    print(f"[RUNNING] SIMULATION {current_run}/{total_runs}")
+                    print(f"[RUNNING] SIMULATION {current_run_count}/{total_runs}")
                     print(f"Scenario: {scenario} | Tutor: System {system} | Run: {run_id}")
                     print(f"{'='*50}\n")
                     
                     try:
-                        # Ejecutar simulación
                         simulator, students_config, scenario_key = _run_simulation(
                             scenario=scenario, system=system, run_id=run_id,
                             llm_client=llm_client, max_ticks=MAX_TICKS
                         )
                         
-                        # Guardar resultados
-                        save_simulation_log(scenario, system, run_id, simulator.chat_history, students_config)
+                        # Already saved inside _run_simulation
                         completed_runs.append((scenario, system, run_id))
+                        completed_set.add((scenario, system, run_id))
                         
                     except Exception as e:
                         error_msg = str(e)
-                        # Detectar rate limit error (429)
-                        if "429" in error_msg or "rate_limit" in error_msg.lower():
-                            print(f"\n[ERROR] Rate limit reached (429)")
+                        # Check for rate limit or other fatal errors
+                        if "429" in error_msg or "rate_limit" in error_msg.lower() or "FATAL" in error_msg:
+                            print(f"\n[ERROR] API key exhaustion or rate limit (429)")
                             print(f"[ERROR] {error_msg[:100]}...")
                             
                             # Guardar checkpoint
@@ -250,49 +258,39 @@ def run_batch_experiments(scenarios=None, systems=None, runs_per_combination=1):
                                 'systems': systems,
                                 'runs_per_combination': runs_per_combination,
                                 'completed_runs': completed_runs,
-                                'current_run': current_run,
+                                'current_run': current_run_count,
                                 'total_runs': total_runs,
                                 'last_error': error_msg[:200]
                             }
                             save_checkpoint(checkpoint_state)
-                            
-                            return  # Detener aquí
+                            return
                         else:
-                            # Otro tipo de error, reintentar en siguiente iteración
                             print(f"[WARNING] Simulation failed: {error_msg[:100]}")
+                            # You might want to save checkpoint here too if you want to stop on ANY error
                             
     except KeyboardInterrupt:
         print(f"\n[INTERRUPTED] Simulación interrumpida por usuario")
-        
-        # Guardar checkpoint
         checkpoint_state = {
             'scenarios': scenarios,
             'systems': systems,
             'runs_per_combination': runs_per_combination,
             'completed_runs': completed_runs,
-            'current_run': current_run,
+            'current_run': current_run_count,
             'total_runs': total_runs,
             'last_error': 'User interrupted'
         }
         save_checkpoint(checkpoint_state)
         return
     
-    # Si completó todo sin errores
     print(f"\n{'='*50}")
     print(f"[OK] Batch experiments completed!")
-    print(f"[INFO] {current_run}/{total_runs} simulations completed successfully")
+    print(f"[INFO] {len(completed_runs)}/{total_runs} simulations completed successfully")
     print(f"{'='*50}\n")
 
 
 def resume_batch_experiments():
     """
     Resume batch experiments from last checkpoint.
-    
-    Carga el último checkpoint y continúa desde donde dejó.
-    
-    Example:
-        >>> run_batch_experiments()  # Sale con error 429
-        >>> resume_batch_experiments()  # Continúa desde donde paró
     """
     state = load_checkpoint()
     
@@ -304,11 +302,12 @@ def resume_batch_experiments():
     print(f"[INFO] Last error: {state.get('last_error', 'None')}")
     print(f"\n")
     
-    # Continuar desde donde dejó
+    # Continuar desde donde dejó, pasando completed_runs
     run_batch_experiments(
         scenarios=state['scenarios'],
         systems=state['systems'],
-        runs_per_combination=state['runs_per_combination']
+        runs_per_combination=state['runs_per_combination'],
+        completed_runs=state.get('completed_runs', [])
     )
 
 

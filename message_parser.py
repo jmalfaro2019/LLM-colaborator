@@ -70,19 +70,31 @@ def parse_tutor_response(raw_response: str) -> Tuple[str, str]:
     analysis = ""
     intervention = raw_response
     
-    # Soportar SOLO formato inglés (español es código muerto)
     if "[TUTOR INTERVENTION]" in raw_response:
         parts = raw_response.split("[TUTOR INTERVENTION]")
-        
-        # Extraer análisis
         analysis = parts[0].replace("[INTERNAL ANALYSIS]", "").strip()
-        
-        # Extraer intervención  
         intervention = parts[1].strip() if len(parts) > 1 else ""
-        
-        # Si está vacío, marcar como silencio
-        if not intervention:
+    elif "[INTERNAL ANALYSIS]" in raw_response:
+        # Si tiene el análisis pero se le olvidó el tag del mensaje
+        parts = raw_response.split("[INTERNAL ANALYSIS]")
+        # Suponiendo que el mensaje (o fading) está al final tras el análisis
+        # Esto es más difícil de parsear sin el segundo tag, pero intentemos:
+        content = parts[1].strip()
+        if "TUTOR REMAINS SILENT" in content:
+            analysis = content.split("TUTOR REMAINS SILENT")[0].strip()
             intervention = "TUTOR REMAINS SILENT (FADING)"
+        else:
+            analysis = content # Heuristic
+            intervention = "TUTOR REMAINS SILENT (FADING)" # Fallback if intervention tag missing
+    elif "TUTOR REMAINS SILENT" in raw_response:
+        # Si solo envió el texto de fading, veamos si hay texto antes
+        parts = raw_response.split("TUTOR REMAINS SILENT")
+        analysis = parts[0].strip()
+        intervention = "TUTOR REMAINS SILENT (FADING)"
+    
+    # Asegurar que la intervención tenga el formato correcto para los checks posteriores
+    if not intervention:
+        intervention = "TUTOR REMAINS SILENT (FADING)"
     
     return analysis, intervention
 

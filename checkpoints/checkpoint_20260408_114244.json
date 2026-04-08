@@ -119,35 +119,10 @@
             "TREES",
             "A",
             2
-        ],
-        [
-            "TREES",
-            "A",
-            3
-        ],
-        [
-            "TREES",
-            "A",
-            4
-        ],
-        [
-            "TREES",
-            "B",
-            2
-        ],
-        [
-            "TREES",
-            "B",
-            3
-        ],
-        [
-            "TREES",
-            "B",
-            4
         ]
     ],
-    "current_run": 30,
+    "current_run": 23,
     "total_runs": 30,
     "last_error": "User interrupted",
-    "timestamp": "2026-04-08T14:20:47.607932"
+    "timestamp": "2026-04-08T11:42:44.036507"
 }

@@ -12,74 +12,57 @@ class SimulatedStudent:
     def __init__(self, name, system_prompt, model_name="llama-3.1-8b-instant"):
         """
         Initialize a simulated student.
-        
-        Args:
-            name: Student's name
-            system_prompt: System prompt defining the student's personality and knowledge
-            model_name: LLM model to use (default: Groq's llama-3.1-8b-instant)
         """
-        load_dotenv()  # Load variables from .env
+        from llm_client import get_groq_client_manager
         
         self.name = name
         self.system_prompt = system_prompt
         self.model = model_name
         self.history = [{"role": "system", "content": system_prompt}]
         self.max_history = MAX_HISTORY_LENGTH
-        
-        # Initialize Groq client (free tier with good speed)
-        self.client = OpenAI(
-            base_url="https://api.groq.com/openai/v1",
-            api_key=os.getenv("GROQ_API_KEY")
-        )
+        self.manager = get_groq_client_manager()
     
     def receive_message(self, sender, message):
-        """
-        Add a message from another participant to the chat history.
-        
-        Implements sliding window to prevent token creep: mantiene último N mensajes
-        además del system prompt al inicio.
-        
-        Args:
-            sender: Name of the person sending the message
-            message: Content of the message
-        """
+        # ... (keep existing implementation)
         self.history.append({"role": "user", "content": f"{sender}: {message}"})
         
-        # M4: VENTANA DESLIZANTE - Mantener historial bajo límite
-        # Nunca eliminar el system prompt (position 0)
         system_prompt = self.history[0]
         other_messages = self.history[1:]
         
         if len(other_messages) > self.max_history:
-            # Mantener solo los últimos N mensajes
             other_messages = other_messages[-self.max_history:]
             self.history = [system_prompt] + other_messages
-            # Silenciosamente mantener límite, sin avisar cada vez
-    
+
     def generate_response(self):
         """
-        Generate a response to the current conversation context.
-        
-        Returns:
-            The student's response as a string
-            
-        Raises:
-            Exception: If LLM call fails after retries
+        Generate a response with automatic API key rotation on rate limits.
         """
-        try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=self.history,
-                temperature=0.3,
-            )
+        while True:
+            config = self.manager.get_active_config()
+            client = config["client"]
+            model = config["model"]
             
-            response_content = response.choices[0].message.content
-            self.history.append({"role": "assistant", "content": response_content})
-            
-            return response_content
-        except Exception as e:
-            # Log error pero no crash - devolver silencio
-            print(f"[WARNING] Error en {self.name}.generate_response(): {e}")
-            fallback = "[THOUGHT]Error en LLM[MESSAGE][SILENCE]"
-            self.history.append({"role": "assistant", "content": fallback})
-            return fallback
+            try:
+                response = client.chat.completions.create(
+                    model=model,
+                    messages=self.history,
+                    temperature=0.3,
+                )
+                
+                response_content = response.choices[0].message.content
+                self.history.append({"role": "assistant", "content": response_content})
+                
+                return response_content
+            except Exception as e:
+                error_msg = str(e)
+                # Check for rate limit (OpenAI uses 429, Gemini SDK uses ResourceExhausted)
+                if any(x in error_msg.lower() for x in ["429", "rate_limit", "resource_exhausted", "resourceexhausted"]):
+                    if self.manager.rotate_key():
+                        print(f"[RETRY] {self.name} retrying with next API key/provider...")
+                        continue # Retry with new key/provider
+                    else:
+                        print(f"[FATAL] {self.name}: All API keys exhausted.")
+                        raise e # No more keys, propagate error
+                else:
+                    print(f"[ERROR] {self.name}: {error_msg}")
+                    raise e

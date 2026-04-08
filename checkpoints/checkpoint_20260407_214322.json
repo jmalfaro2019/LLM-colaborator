@@ -79,75 +79,10 @@
             "KMEANS",
             "A",
             4
-        ],
-        [
-            "KMEANS",
-            "A",
-            5
-        ],
-        [
-            "KMEANS",
-            "B",
-            1
-        ],
-        [
-            "KMEANS",
-            "B",
-            2
-        ],
-        [
-            "KMEANS",
-            "B",
-            3
-        ],
-        [
-            "KMEANS",
-            "B",
-            4
-        ],
-        [
-            "KMEANS",
-            "B",
-            5
-        ],
-        [
-            "TREES",
-            "A",
-            1
-        ],
-        [
-            "TREES",
-            "A",
-            2
-        ],
-        [
-            "TREES",
-            "A",
-            3
-        ],
-        [
-            "TREES",
-            "A",
-            4
-        ],
-        [
-            "TREES",
-            "B",
-            2
-        ],
-        [
-            "TREES",
-            "B",
-            3
-        ],
-        [
-            "TREES",
-            "B",
-            4
         ]
     ],
-    "current_run": 30,
+    "current_run": 15,
     "total_runs": 30,
-    "last_error": "User interrupted",
-    "timestamp": "2026-04-08T14:20:47.607932"
+    "last_error": "Error code: 429 - [{'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/g",
+    "timestamp": "2026-04-07T21:43:22.072873"
 }

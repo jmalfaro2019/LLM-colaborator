@@ -29,10 +29,16 @@ class PBLSimulator:
         self.system_type = system_type
         
         self.chat_history = []
+        self.transcript = [] # Capture all console output for TXT logs
         self.inactivity = {student.name: 0 for student in students}
         self.non_transactive_turns = 0
         self.problem_ground_truth = ground_truth
     
+    def log(self, message):
+        """Prints to console and appends to the transcript log."""
+        print(message)
+        self.transcript.append(str(message))
+
     def run(self):
         """Execute the PBL simulation."""
         self._tutor_opening()
@@ -43,7 +49,7 @@ class PBLSimulator:
     
     def _tutor_opening(self):
         """Start the discussion with the tutor's opening message."""
-        print(f"[Tick 0] Tutor: {TUTOR_MESSAGE}")
+        self.log(f"[Tick 0] Tutor: {TUTOR_MESSAGE}")
         self.chat_history.append({
             "name": "Tutor",
             "message": TUTOR_MESSAGE,
@@ -59,7 +65,7 @@ class PBLSimulator:
     
     def _run_tick(self, tick):
         """Execute one round of discussion with Chain of Thought parsing."""
-        print(f"\n--- Minute {tick} ---")
+        self.log(f"\n--- Minute {tick} ---")
         has_transactivity_this_turn = False
         
         for student in self.students:
@@ -84,16 +90,16 @@ class PBLSimulator:
             
             # 4. Print thought to console ONLY for researcher/debugging
             if thought:
-                print(f"[{student.name} THINKING]: {thought}")
+                self.log(f"[{student.name} THINKING]: {thought}")
             
             # 5. Normal simulation logic but using ONLY the public_message
             if public_message == "[SILENCE]" or "[SILENCE]" in public_message:
-                print(f"{student.name} decided not to speak.")
+                self.log(f"{student.name} decided not to speak.")
                 self.inactivity[student.name] += 1
                 # Don't add SILENCE to chat history
             else:
                 self.inactivity[student.name] = 0  # Reset counter
-                print(f"{student.name} says: {public_message}")
+                self.log(f"{student.name} says: {public_message}")
                 
                 # Initialize message entry
                 message_entry = {
@@ -110,7 +116,7 @@ class PBLSimulator:
                         public_message, 
                         self.llm_client
                     )
-                    print(f"  -> {classification}")
+                    self.log(f"  -> {classification}")
                     message_entry["transactivity"] = classification
                 
                 self.chat_history.append(message_entry)
@@ -174,7 +180,8 @@ class PBLSimulator:
             ENRICHED HISTORY:
             {enriched_history}
             
-            Perform your [INTERNAL ANALYSIS] and decide your move. If the team is collaborating well and heading in the right direction, you MUST respond with 'TUTOR REMAINS SILENT (FADING)'."""
+            Perform your [INTERNAL ANALYSIS] and decide your move. 
+            CRITICAL: Even if you apply FADING, you MUST provide the [INTERNAL ANALYSIS] followed by [TUTOR INTERVENTION] TUTOR REMAINS SILENT (FADING)."""
             
             # Trigger tutor. They will decide internally whether to speak or stay silent.
             self._trigger_tutor_intervention(instruction)
@@ -197,15 +204,15 @@ class PBLSimulator:
         analysis, intervention = parse_tutor_response(raw_response)
         
         # Display the analysis in console (debug)
-        print(f"\n>>> [Tutor PEDAGOGICAL REASONING]:\n{analysis}")
+        self.log(f"\n>>> [Tutor PEDAGOGICAL REASONING]:\n{analysis}")
 
         # 4. EVALUATE FADING (SILENCE)
         if "TUTOR REMAINS SILENT" in intervention:
-            print(">>> [Tutor decided to apply FADING and remain silent]")
+            self.log(">>> [Tutor decided to apply FADING and remain silent]")
             return  # Stop here, no message is sent.
 
         # 5. Propagate the tutor's message to chat and all students
-        print(f"\n[SYSTEM {self.system_type} INTERVENES] Tutor: {intervention}")
+        self.log(f"\n[SYSTEM {self.system_type} INTERVENES] Tutor: {intervention}")
         
         # Use dictionary format for chat_history consistency
         self.chat_history.append({"name": "Tutor", "message": intervention})
@@ -213,16 +220,17 @@ class PBLSimulator:
         for student in self.students: 
             student.receive_message("Tutor", intervention)
         
-    @staticmethod
-    def evaluate_transactivity(chat_history, student_name, current_message, llm_client):
+    def evaluate_transactivity(self, chat_history, student_name, current_message, llm_client):
         """
         Evaluates if a student's message is transactive (builds on previous ideas).
         Only used in System A (Transactivity-based evaluation).
         """
         if len(chat_history) < 3:
-            return "[TRANSACTIVE]"  # Allow flow if discussion just started
+            return "[TRANSACTIVE]"
 
-        # Extract text from chat history (handling both dict and string formats)
+        from llm_client import get_groq_client_manager
+        manager = get_groq_client_manager()
+
         previous_messages = []
         for msg in chat_history[-3:]:
             if isinstance(msg, dict):
@@ -236,35 +244,41 @@ class PBLSimulator:
             current_message=current_message
         )
         
-        try:
-            response = llm_client.chat.completions.create(
-                model="llama-3.1-8b-instant",
-                messages=[{"role": "user", "content": formatted_prompt}],
-                temperature=0.0,
-                max_tokens=150  # Increased to allow reasoning space
-            )
-            raw_output = response.choices[0].message.content.strip()
+        while True:
+            config = manager.get_active_config()
+            client = config["client"]
+            model = config["model"]
             
-            # 1. By default, assume transactive if parsing fails
-            final_label = "[TRANSACTIVE]" 
-            
-            # 2. Extract the exact label
-            if "[NON_TRANSACTIVE]" in raw_output:
-                final_label = "[NON_TRANSACTIVE]"
-            elif "[NEUTRAL]" in raw_output:
-                final_label = "[NEUTRAL]"
-            elif "[TRANSACTIVE]" in raw_output:
-                final_label = "[TRANSACTIVE]"
-            
-            # 3. Clean text to show only the reasoning
-            reasoning_text = raw_output.replace(final_label, "").replace("[LABEL]", "").replace("[REASONING]", "").strip()
-            
-            # 4. Print the evaluator's reasoning in console
-            print(f"    [Evaluator THINKING about {student_name}]: {reasoning_text}")
-            
-            # 5. Return ONLY the label
-            return final_label
-            
-        except Exception as e:
-            print(f"Error evaluating transactivity: {e}")
-            return "[TRANSACTIVE]"  # Fallback on network error
+            try:
+                response = client.chat.completions.create(
+                    model=model,
+                    messages=[{"role": "user", "content": formatted_prompt}],
+                    temperature=0.0,
+                    max_tokens=150
+                )
+                raw_output = response.choices[0].message.content.strip()
+                
+                final_label = "[TRANSACTIVE]" 
+                if "[NON_TRANSACTIVE]" in raw_output:
+                    final_label = "[NON_TRANSACTIVE]"
+                elif "[NEUTRAL]" in raw_output:
+                    final_label = "[NEUTRAL]"
+                elif "[TRANSACTIVE]" in raw_output:
+                    final_label = "[TRANSACTIVE]"
+                
+                reasoning_text = raw_output.replace(final_label, "").replace("[LABEL]", "").replace("[REASONING]", "").strip()
+                self.log(f"    [Evaluator THINKING about {student_name}]: {reasoning_text}")
+                return final_label
+                
+            except Exception as e:
+                error_msg = str(e)
+                if any(x in error_msg.lower() for x in ["429", "rate_limit", "resource_exhausted", "resourceexhausted"]):
+                    if manager.rotate_key():
+                        self.log(f"    [RETRY] Evaluator retrying with next API key/provider...")
+                        continue
+                    else:
+                        self.log(f"    [FATAL] Evaluator: All API keys exhausted.")
+                        raise e
+                else:
+                    self.log(f"Error evaluating transactivity: {e}")
+                    return "[TRANSACTIVE]"
